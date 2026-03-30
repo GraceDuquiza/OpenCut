@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import { useSoundsStore } from "@/stores/sounds-store";
 
+async function getErrorMessage(response: Response, fallback: string) {
+	try {
+		const data = (await response.json()) as { error?: string; message?: string };
+		return data.message || data.error || fallback;
+	} catch {
+		return fallback;
+	}
+}
+
 export function useSoundSearch({
 	query,
 	commercialOnly,
@@ -64,7 +73,12 @@ export function useSoundSearch({
 				setHasNextPage({ hasNext: !!data.next });
 				setTotalCount(data.count);
 			} else {
-				setSearchError({ error: `Load more failed: ${response.status}` });
+				setSearchError({
+					error: await getErrorMessage(
+						response,
+						`Load more failed: ${response.status}`,
+					),
+				});
 			}
 		} catch (err) {
 			setSearchError({
@@ -108,7 +122,12 @@ export function useSoundSearch({
 						setTotalCount({ count: data.count });
 						setCurrentPage({ page: 1 });
 					} else {
-						setSearchError({ error: `Search failed: ${response.status}` });
+						setSearchError({
+							error: await getErrorMessage(
+								response,
+								`Search failed: ${response.status}`,
+							),
+						});
 					}
 				}
 			} catch (err) {

@@ -88,6 +88,19 @@ const apiResponseSchema = z.object({
 	minRating: z.number().optional(),
 });
 
+function hasConfiguredFreesoundCredentials() {
+	const placeholderValues = new Set([
+		"",
+		"your_client_id_here",
+		"your_api_key_here",
+	]);
+
+	return (
+		!placeholderValues.has(webEnv.FREESOUND_CLIENT_ID) &&
+		!placeholderValues.has(webEnv.FREESOUND_API_KEY)
+	);
+}
+
 function buildSortParameter({ query, sort }: { query?: string; sort: string }) {
 	if (!query) return `${sort}_desc`;
 	return sort === "score" ? "score" : `${sort}_desc`;
@@ -149,6 +162,17 @@ function transformFreesoundResult(
 
 export async function GET(request: NextRequest) {
 	try {
+		if (!hasConfiguredFreesoundCredentials()) {
+			return NextResponse.json(
+				{
+					error: "Freesound is not configured",
+					message:
+						"Add valid FREESOUND_CLIENT_ID and FREESOUND_API_KEY values in apps/web/.env.local.",
+				},
+				{ status: 503 },
+			);
+		}
+
 		const { limited } = await checkRateLimit({ request });
 		if (limited) {
 			return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -221,7 +245,13 @@ export async function GET(request: NextRequest) {
 			const errorText = await response.text();
 			console.error("Freesound API error:", response.status, errorText);
 			return NextResponse.json(
-				{ error: "Failed to search sounds" },
+				{
+					error: "Failed to search sounds",
+					message:
+						response.status === 401
+							? "Freesound credentials were rejected. Check FREESOUND_API_KEY in apps/web/.env.local."
+							: undefined,
+				},
 				{ status: response.status },
 			);
 		}

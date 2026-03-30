@@ -3,6 +3,15 @@ import { withBotId } from "botid/next/config";
 import { withContentCollections } from "@content-collections/next";
 
 const nextConfig: NextConfig = {
+	devIndicators: false,
+	webpack(config) {
+		config.module.rules.push({
+			test: /\.(glsl|vert|frag)$/i,
+			type: "asset/source",
+		});
+
+		return config;
+	},
 	turbopack: {
 		rules: {
 			"*.glsl": {

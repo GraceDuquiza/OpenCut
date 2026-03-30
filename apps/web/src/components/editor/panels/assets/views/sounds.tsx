@@ -35,6 +35,15 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
+async function getErrorMessage(response: Response, fallback: string) {
+	try {
+		const data = (await response.json()) as { error?: string; message?: string };
+		return data.message || data.error || fallback;
+	} catch {
+		return fallback;
+	}
+}
+
 export function SoundsView() {
 	return (
 		<div className="flex h-full flex-col">
@@ -86,6 +95,7 @@ function SoundEffectsView() {
 	const {
 		results: searchResults,
 		isLoading: isSearching,
+		error: searchError,
 		loadMore,
 		hasNextPage,
 		isLoadingMore,
@@ -129,7 +139,12 @@ function SoundEffectsView() {
 
 				if (!shouldIgnore) {
 					if (!response.ok) {
-						throw new Error(`Failed to fetch: ${response.status}`);
+						const message = await getErrorMessage(
+							response,
+							`Failed to fetch: ${response.status}`,
+						);
+						setError({ error: message });
+						return;
 					}
 
 					const data = await response.json();
@@ -142,7 +157,6 @@ function SoundEffectsView() {
 				}
 			} catch (error) {
 				if (!shouldIgnore) {
-					console.error("Failed to fetch top sounds:", error);
 					setError({
 						error:
 							error instanceof Error ? error.message : "Failed to load sounds",
@@ -195,6 +209,7 @@ function SoundEffectsView() {
 	};
 
 	const displayedSounds = searchQuery ? searchResults : topSoundEffects;
+	const activeError = searchQuery ? searchError : error;
 
 	const playSound = ({ sound }: { sound: SoundEffect }) => {
 		if (playingId === sound.id) {
@@ -277,6 +292,11 @@ function SoundEffectsView() {
 						)}
 						{isSearching && searchQuery && (
 							<div className="text-muted-foreground text-sm">Searching...</div>
+						)}
+						{activeError && (
+							<div className="text-muted-foreground text-sm">
+								{activeError}
+							</div>
 						)}
 						{displayedSounds.map((sound) => (
 							<AudioItem
