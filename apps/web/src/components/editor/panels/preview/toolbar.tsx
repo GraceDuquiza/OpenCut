@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { formatTimeCode } from "@/lib/time";
-import { invokeAction } from "@/lib/actions";
 import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
 import {
@@ -137,13 +136,18 @@ function ZoomSelect() {
 }
 
 function PlayPauseButton() {
+	const editor = useEditor();
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
 
 	return (
 		<Button
 			variant="text"
 			size="icon"
-			onClick={() => invokeAction("toggle-play")}
+			aria-label={isPlaying ? "Pause playback" : "Play playback"}
+			onClick={(event) => {
+				event.stopPropagation();
+				editor.playback.toggle();
+			}}
 		>
 			<HugeiconsIcon icon={isPlaying ? PauseIcon : PlayIcon} />
 		</Button>

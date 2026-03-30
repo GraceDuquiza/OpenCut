@@ -159,7 +159,7 @@ export class AudioManager {
 		if (!audioContext) return;
 
 		this.stopPlayback();
-		this.playbackSessionId++;
+		const sessionId = this.playbackSessionId;
 		this.playbackLatencyCompensationSeconds = 0;
 
 		const tracks = this.editor.timeline.getTracks();
@@ -173,6 +173,7 @@ export class AudioManager {
 		}
 
 		this.clips = await collectAudioClips({ tracks, mediaAssets });
+		if (sessionId !== this.playbackSessionId) return;
 		if (!this.editor.playback.getIsPlaying()) return;
 
 		this.playbackStartTime = time;
@@ -219,6 +220,8 @@ export class AudioManager {
 	}
 
 	private stopPlayback(): void {
+		this.playbackSessionId++;
+
 		if (this.scheduleTimer && typeof window !== "undefined") {
 			window.clearInterval(this.scheduleTimer);
 		}
@@ -251,7 +254,7 @@ export class AudioManager {
 		const audioContext = this.ensureAudioContext();
 		if (!audioContext) return;
 
-		const sink = await this.getAudioSink({ clip });
+		const sink = await this.getAudioSink({ clip, sessionId });
 		if (!sink || !this.editor.playback.getIsPlaying()) return;
 		if (sessionId !== this.playbackSessionId) return;
 
@@ -679,8 +682,10 @@ export class AudioManager {
 
 	private async getAudioSink({
 		clip,
+		sessionId,
 	}: {
 		clip: AudioClipSource;
+		sessionId: number;
 	}): Promise<AudioBufferSink | null> {
 		const existingSink = this.sinks.get(clip.sourceKey);
 		if (existingSink) return existingSink;
@@ -691,6 +696,10 @@ export class AudioManager {
 				formats: ALL_FORMATS,
 			});
 			const audioTrack = await input.getPrimaryAudioTrack();
+			if (sessionId !== this.playbackSessionId) {
+				input.dispose();
+				return null;
+			}
 			if (!audioTrack) {
 				input.dispose();
 				return null;
@@ -701,6 +710,14 @@ export class AudioManager {
 			this.sinks.set(clip.sourceKey, sink);
 			return sink;
 		} catch (error) {
+			if (
+				sessionId !== this.playbackSessionId ||
+				(error instanceof Error &&
+					(error.name === "InputDisposedError" ||
+						error.message.includes("Input has been disposed")))
+			) {
+				return null;
+			}
 			console.warn("Failed to initialize audio sink:", error);
 			return null;
 		}

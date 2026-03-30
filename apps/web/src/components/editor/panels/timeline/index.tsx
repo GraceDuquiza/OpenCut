@@ -816,20 +816,22 @@ function TrackToggleIcon({
 	onClick: () => void;
 }) {
 	return (
-		<>
-			{isOff ? (
-				<HugeiconsIcon
-					icon={icons.off}
-					className="text-destructive size-4 cursor-pointer"
-					onClick={onClick}
-				/>
-			) : (
-				<HugeiconsIcon
-					icon={icons.on}
-					className="text-muted-foreground size-4 cursor-pointer"
-					onClick={onClick}
-				/>
-			)}
-		</>
+		<button
+			type="button"
+			className="inline-flex items-center justify-center rounded-sm"
+			onClick={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				onClick();
+			}}
+		>
+			<HugeiconsIcon
+				icon={isOff ? icons.off : icons.on}
+				className={cn(
+					"size-4 cursor-pointer",
+					isOff ? "text-destructive" : "text-muted-foreground",
+				)}
+			/>
+		</button>
 	);
 }

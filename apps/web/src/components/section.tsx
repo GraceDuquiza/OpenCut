@@ -133,14 +133,21 @@ export function SectionHeader({
 		) : null;
 
 	const innerContent = isInteractive ? (
-		<button
-			type="button"
+		<div
+			role="button"
+			tabIndex={0}
 			className="min-w-0 flex-1 flex items-center gap-2 h-full cursor-pointer text-left"
 			onClick={handleClick}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					handleClick?.();
+				}
+			}}
 		>
 			{leading}
 			<div className="min-w-0 flex-1 flex items-center">{children}</div>
-		</button>
+		</div>
 	) : (
 		<>
 			{leading}
