@@ -2,6 +2,7 @@ import type { TProject, TProjectMetadata } from "@/lib/project/types";
 import { getProjectDurationFromScenes } from "@/lib/scenes";
 import type { MediaAsset } from "@/lib/media/types";
 import { IndexedDBAdapter } from "./indexeddb-adapter";
+import { IndexedDBFileAdapter } from "./indexeddb-file-adapter";
 import { OPFSAdapter } from "./opfs-adapter";
 import {
 	type StorageCapacityCheckResult,
@@ -22,6 +23,7 @@ import {
 	runStorageMigrations,
 } from "@/services/storage/migrations";
 import type { Bookmark, TimelineTrack, TScene } from "@/lib/timeline";
+import type { StorageAdapter } from "./types";
 
 function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 	if (!Array.isArray(raw)) return [];
@@ -92,9 +94,25 @@ class StorageService {
 			this.config.version,
 		);
 
-		const mediaAssetsAdapter = new OPFSAdapter(`media-files-${projectId}`);
+		const mediaAssetsAdapter = this.createMediaAssetsAdapter({ projectId });
 
 		return { mediaMetadataAdapter, mediaAssetsAdapter };
+	}
+
+	private createMediaAssetsAdapter({
+		projectId,
+	}: {
+		projectId: string;
+	}): StorageAdapter<File> {
+		if (this.isOPFSSupported()) {
+			return new OPFSAdapter(`media-files-${projectId}`);
+		}
+
+		return new IndexedDBFileAdapter(
+			`${this.config.mediaDb}-${projectId}`,
+			"media-files",
+			this.config.version,
+		);
 	}
 
 	async canStoreFile({
@@ -522,7 +540,7 @@ class StorageService {
 	}
 
 	isFullySupported(): boolean {
-		return this.isIndexedDBSupported() && this.isOPFSSupported();
+		return this.isIndexedDBSupported();
 	}
 }
 
