@@ -19,6 +19,7 @@ interface VideoSinkData {
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
+	private frameChains = new Map<string, Promise<unknown>>();
 
 	async getFrameAt({
 		mediaId,
@@ -34,6 +35,26 @@ export class VideoCache {
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
 
+		const previousFrameRequest =
+			this.frameChains.get(mediaId) ?? Promise.resolve();
+		const currentFrameRequest = previousFrameRequest.then(() =>
+			this.resolveFrame({ sinkData, time }),
+		);
+		this.frameChains.set(
+			mediaId,
+			currentFrameRequest.catch(() => {}),
+		);
+
+		return currentFrameRequest;
+	}
+
+	private async resolveFrame({
+		sinkData,
+		time,
+	}: {
+		sinkData: VideoSinkData;
+		time: number;
+	}): Promise<WrappedCanvas | null> {
 		if (sinkData.nextFrame && sinkData.nextFrame.timestamp <= time) {
 			sinkData.currentFrame = sinkData.nextFrame;
 			sinkData.nextFrame = null;
@@ -293,6 +314,7 @@ export class VideoCache {
 		}
 
 		this.initPromises.delete(mediaId);
+		this.frameChains.delete(mediaId);
 	}
 
 	clearAll(): void {

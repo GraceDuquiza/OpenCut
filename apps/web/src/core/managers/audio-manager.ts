@@ -31,6 +31,8 @@ export class AudioManager {
 	private scheduleTimer: number | null = null;
 	private lookaheadSeconds = 2;
 	private scheduleIntervalMs = 500;
+	private streamBufferAheadSeconds = 3;
+	private streamBufferResumeSeconds = 2;
 	private clips: AudioClipSource[] = [];
 	private sinks = new Map<string, AudioBufferSink>();
 	private inputs = new Map<string, Input>();
@@ -348,9 +350,13 @@ export class AudioManager {
 				this.queuedSources.delete(node);
 			});
 
-			const aheadTime = timelineTime - this.getPlaybackTime();
-			if (aheadTime >= 1) {
-				await this.waitUntilCaughtUp({ timelineTime, targetAhead: 1 });
+			const bufferedUntilTime = timelineTime + buffer.duration;
+			const aheadTime = bufferedUntilTime - this.getPlaybackTime();
+			if (aheadTime >= this.streamBufferAheadSeconds) {
+				await this.waitUntilCaughtUp({
+					timelineTime: bufferedUntilTime,
+					targetAhead: this.streamBufferResumeSeconds,
+				});
 				if (sessionId !== this.playbackSessionId) return;
 			}
 		}

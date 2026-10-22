@@ -76,6 +76,7 @@ function SoundEffectsView() {
 	const {
 		topSoundEffects,
 		isLoading,
+		error,
 		searchQuery,
 		setSearchQuery,
 		scrollPosition,
